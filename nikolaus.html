@@ -13,7 +13,7 @@
     canvas {
       display: block;
       margin: 0 auto;
-      width: 100%;
+      width: 95%;
       height: 70vh;
       touch-action: manipulation;
     }
@@ -24,7 +24,7 @@
   </style>
 </head>
 <body>
-  <h2>🎅 Hilf dem Nikolaus – triff ihn mit 3 Schneebällen!</h2>
+  <h2>🎅 Hilf dem Nikolaus – triff die Geschenke mit Schneebällen!</h2>
   <canvas id="gameCanvas"></canvas>
   <div id="message"></div>
 
@@ -34,7 +34,7 @@
 
     // Canvas auf volle Größe einstellen
     function resizeCanvas() {
-      canvas.width = window.innerWidth * 0.95;
+      canvas.width = window.innerWidth * 0,95;
       canvas.height = window.innerHeight * 0.7;
     }
     window.addEventListener("resize", resizeCanvas);
@@ -70,3 +70,56 @@
       // Nikolaus (einfacher Kreis mit roter Mütze)
       ctx.beginPath();
       ctx.arc(target.x, target.y, target.r, 0, Math.PI * 2);
+      ctx.fillStyle = "#fff";
+      ctx.fill();
+      ctx.stroke();
+
+      // Rote Mütze
+      ctx.beginPath();
+      ctx.moveTo(target.x - target.r, target.y - target.r/2);
+      ctx.lineTo(target.x + target.r, target.y - target.r/2);
+      ctx.lineTo(target.x, target.y - target.r*1.5);
+      ctx.closePath();
+      ctx.fillStyle = "red";
+      ctx.fill();
+    }
+
+    function throwSnowball(x, y) {
+      const dx = x - target.x;
+      const dy = y - target.y;
+      if (Math.sqrt(dx*dx + dy*dy) < target.r) {
+        hits++;
+        randomTarget();
+        if (hits >= 3) {
+          document.getElementById("message").innerText =
+            "🎉 Du hast den Nikolaus getroffen! Hier ist deine geheime Botschaft:\n\n" + secret;
+        } else {
+          document.getElementById("message").innerText =
+            "Treffer! (" + hits + "/3)";
+        }
+      } else {
+        document.getElementById("message").innerText = "Daneben!";
+      }
+    }
+
+    canvas.addEventListener("click", e => {
+      const rect = canvas.getBoundingClientRect();
+      throwSnowball(e.clientX - rect.left, e.clientY - rect.top);
+    });
+
+    canvas.addEventListener("touchstart", e => {
+      const rect = canvas.getBoundingClientRect();
+      const touch = e.touches[0];
+      throwSnowball(touch.clientX - rect.left, touch.clientY - rect.top);
+    });
+
+    // Initial zeichnen
+    randomTarget();
+    function loop() {
+      draw();
+      requestAnimationFrame(loop);
+    }
+    loop();
+  </script>
+</body>
+</html>
