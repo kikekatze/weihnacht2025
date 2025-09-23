@@ -15,11 +15,12 @@
       margin: 0 auto;
       width: 100%;
       height: 70vh;
-      touch-action: none; /* ganz wichtig für Mobile */
+      touch-action: none; /* verhindert Scroll-Gesten */
     }
     #message {
       margin: 1em;
       font-size: 1.2em;
+      white-space: pre-line;
     }
   </style>
 </head>
@@ -32,7 +33,6 @@
     const canvas = document.getElementById("gameCanvas");
     const ctx = canvas.getContext("2d");
 
-    // Canvas anpassen
     function resizeCanvas() {
       canvas.width = window.innerWidth;
       canvas.height = window.innerHeight * 0.7;
@@ -44,12 +44,12 @@
     let hits = 0;
     let secret = "";
 
-    // Nachricht aus URL laden
+    // Nachricht aus URL
     const urlParams = new URLSearchParams(window.location.search);
     if (urlParams.has("d")) {
       try {
         secret = atob(urlParams.get("d"));
-      } catch (e) {
+      } catch {
         secret = "(Fehler beim Decodieren)";
       }
     }
@@ -62,7 +62,7 @@
     function draw() {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-      // Nikolaus-Kopf
+      // Kopf
       ctx.beginPath();
       ctx.arc(target.x, target.y, target.r, 0, Math.PI * 2);
       ctx.fillStyle = "#fff";
@@ -79,41 +79,40 @@
       ctx.fill();
     }
 
-    function throwSnowball(x, y) {
+    function throwSnowball(evt) {
+      const rect = canvas.getBoundingClientRect();
+      let x, y;
+      if (evt.touches && evt.touches[0]) {
+        x = evt.touches[0].clientX - rect.left;
+        y = evt.touches[0].clientY - rect.top;
+      } else {
+        x = evt.clientX - rect.left;
+        y = evt.clientY - rect.top;
+      }
+
       const dx = x - target.x;
       const dy = y - target.y;
+
       if (Math.sqrt(dx*dx + dy*dy) < target.r) {
         hits++;
         randomTarget();
         if (hits >= 3) {
           document.getElementById("message").innerText =
-            "🎉 Du hast den Nikolaus getroffen! Hier ist deine geheime Botschaft:\n\n" + secret;
+            "🎉 Du hast den Nikolaus getroffen!\nHier ist deine geheime Botschaft:\n\n" + secret;
         } else {
-          document.getElementById("message").innerText =
-            "Treffer! (" + hits + "/3)";
+          document.getElementById("message").innerText = "Treffer! (" + hits + "/3)";
         }
       } else {
-        document.getElementById("message").innerText = "Daneben!";
+        document.getElementById("message").innerText = "Daneben! Versuchs nochmal.";
       }
     }
 
-    // Klick
-    canvas.addEventListener("click", e => {
-      const rect = canvas.getBoundingClientRect();
-      throwSnowball(e.clientX - rect.left, e.clientY - rect.top);
-    });
-
-    // Touch (mit fix)
+    canvas.addEventListener("click", throwSnowball);
     canvas.addEventListener("touchstart", e => {
-      e.preventDefault(); // verhindert Scroll/Zoom
-      const rect = canvas.getBoundingClientRect();
-      const touch = e.touches[0];
-      const x = touch.pageX - rect.left - window.scrollX;
-      const y = touch.pageY - rect.top - window.scrollY;
-      throwSnowball(x, y);
+      e.preventDefault();
+      throwSnowball(e);
     }, { passive: false });
 
-    // Start
     randomTarget();
     function loop() {
       draw();
