@@ -15,7 +15,7 @@
       margin: 0 auto;
       width: 100%;
       height: 70vh;
-      touch-action: manipulation;
+      touch-action: none; /* ganz wichtig für Mobile */
     }
     #message {
       margin: 1em;
@@ -24,7 +24,7 @@
   </style>
 </head>
 <body>
-  <h2>🎅 Hilf dem Nikolaus – triff den Niklaus mit 3 Schneebällen!</h2>
+  <h2>🎅 Hilf dem Nikolaus – triff ihn mit 3 Schneebällen!</h2>
   <canvas id="gameCanvas"></canvas>
   <div id="message"></div>
 
@@ -32,7 +32,7 @@
     const canvas = document.getElementById("gameCanvas");
     const ctx = canvas.getContext("2d");
 
-    // Canvas auf volle Größe einstellen
+    // Canvas anpassen
     function resizeCanvas() {
       canvas.width = window.innerWidth;
       canvas.height = window.innerHeight * 0.7;
@@ -40,17 +40,11 @@
     window.addEventListener("resize", resizeCanvas);
     resizeCanvas();
 
-    // Nikolaus-Position
-    let target = {
-      x: canvas.width / 2,
-      y: canvas.height / 2,
-      r: 40
-    };
-
+    let target = { x: 0, y: 0, r: 40 };
     let hits = 0;
     let secret = "";
 
-    // Base64 aus URL holen
+    // Nachricht aus URL laden
     const urlParams = new URLSearchParams(window.location.search);
     if (urlParams.has("d")) {
       try {
@@ -67,59 +61,15 @@
 
     function draw() {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
-      // Nikolaus (einfacher Kreis mit roter Mütze)
+
+      // Nikolaus-Kopf
       ctx.beginPath();
       ctx.arc(target.x, target.y, target.r, 0, Math.PI * 2);
       ctx.fillStyle = "#fff";
       ctx.fill();
       ctx.stroke();
 
-      // Rote Mütze
+      // Mütze
       ctx.beginPath();
       ctx.moveTo(target.x - target.r, target.y - target.r/2);
-      ctx.lineTo(target.x + target.r, target.y - target.r/2);
-      ctx.lineTo(target.x, target.y - target.r*1.5);
-      ctx.closePath();
-      ctx.fillStyle = "red";
-      ctx.fill();
-    }
-
-    function throwSnowball(x, y) {
-      const dx = x - target.x;
-      const dy = y - target.y;
-      if (Math.sqrt(dx*dx + dy*dy) < target.r) {
-        hits++;
-        randomTarget();
-        if (hits >= 3) {
-          document.getElementById("message").innerText =
-            "🎉 Du hast den Nikolaus getroffen! Hier ist deine geheime Botschaft:\n\n" + secret;
-        } else {
-          document.getElementById("message").innerText =
-            "Treffer! (" + hits + "/3)";
-        }
-      } else {
-        document.getElementById("message").innerText = "Daneben!";
-      }
-    }
-
-    canvas.addEventListener("click", e => {
-      const rect = canvas.getBoundingClientRect();
-      throwSnowball(e.clientX - rect.left, e.clientY - rect.top);
-    });
-
-    canvas.addEventListener("touchstart", e => {
-      const rect = canvas.getBoundingClientRect();
-      const touch = e.touches[0];
-      throwSnowball(touch.clientX - rect.left, touch.clientY - rect.top);
-    });
-
-    // Initial zeichnen
-    randomTarget();
-    function loop() {
-      draw();
-      requestAnimationFrame(loop);
-    }
-    loop();
-  </script>
-</body>
-</html>
+      ctx.lin
