@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Nikolaus Schneeball-Spiel</title>
+<style>
+  :root{font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,"Helvetica Neue",Arial;}
+  body{margin:0;background:linear-gradient(#0a2a43,#133d2e);color:#fff;display:flex;align-items:center;justify-content:center;min-height:100vh;overflow:hidden}
+  canvas{background:rgba(255,255,255,0.08);border:2px solid #fff;border-radius:12px;box-shadow:0 8px 30px rgba(0,0,0,0.6)}
+  .hud{position:absolute;top:12px;left:50%;transform:translateX(-50%);text-align:center}
+  .hud h1{margin:0;font-size:28px}
+  .hud p{margin:4px 0}
+  #message{margin-top:10px;background:rgba(0,0,0,0.35);padding:8px 12px;border-radius:8px;min-height:60px}
+  #controls{margin-top:12px}
+  input{padding:6px 10px;border-radius:6px;border:0;background:rgba(255,255,255,0.1);color:#fff;width:220px}
+  button{padding:6px 12px;margin-left:6px;border-radius:6px;border:0;background:#ffd166;color:#000;font-weight:700;cursor:pointer}
+</style>
+</head>
+<body>
+<div class="hud">
+  <h1>🎅 Nikolaus Schneeball-Schlacht 🎄</h1>
+  <p>Wirf 10 Schneebälle und triff mindestens 7 Geschenke, um die Koordinaten zu erhalten!</p>
+  <canvas id="game" width="600" height="400"></canvas>
+  <div id="message">Noch keine Nachricht geladen.</div>
+  <div id="controls">
+    <input id="inputD" placeholder="Base64-String oder URL mit ?d=..." />
+    <button id="loadBtn">Laden</button>
+  </div>
+</div>
+<script>
+(function(){
+  function b64DecodeUnicode(str) {
+    try {
+      if (str.indexOf('?')>-1) {
+        var u = new URL(str, location.href);
+        str = u.searchParams.get('d') || str;
+      }
+      str = str.replace(/-/g,'+').replace(/_/g,'/');
+      while (str.length % 4) str += '=';
+      return decodeURIComponent(Array.prototype.map.call(atob(str), function(c){
+        return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+      }).join(''));
+    } catch(e){ return null; }
+  }
+
+  const messageEl = document.getElementById('message');
+  const input = document.getElementById('inputD');
+  const loadBtn = document.getElementById('loadBtn');
+
+  let secret='';
+  function loadFromString(s){
+    const decoded = b64DecodeUnicode(s);
+    if(!decoded){ messageEl.innerHTML = '<b>Fehler:</b> Ungültiger Base64-String.'; return; }
+    secret = decoded.trim();
+    messageEl.innerHTML = 'Nachricht geladen! Bestehe das Spiel, um sie zu sehen.';
+    resetGame();
+  }
+  loadBtn.addEventListener('click',()=>{loadFromString(input.value.trim());});
+
+  // Canvas Game
+  const canvas=document.getElementById('game');
+  const ctx=canvas.getContext('2d');
+  let balls=[]; let gifts=[]; let shots=0; let hits=0; let finished=false;
+
+  function resetGame(){
+    balls=[];gifts=[];shots=0;hits=0;finished=false;
+    for(let i=0;i<8;i++){
+      gifts.push({x:Math.random()*550+25,y:Math.random()*300+40,r:20,hit:false});
+    }
+    draw();
+  }
+
+  function throwBall(x,y){
+    if(finished||shots>=10) return;
+    balls.push({x:300,y:380,dx:(x-300)/30,dy:(y-380)/30,r:8});
+    shots++;
+  }
+
+  canvas.addEventListener('click',e=>{
+    const rect=canvas.getBoundingClientRect();
+    throwBall(e.clientX-rect.left,e.clientY-rect.top);
+  });
+
+  function update(){
+    balls.forEach(b=>{b.x+=b.dx;b.y+=b.dy;});
+    balls=balls.filter(b=>b.x>-10&&b.x<610&&b.y>-10&&b.y<410);
+    balls.forEach(b=>{
+      gifts.forEach(g=>{
+        if(!g.hit){
+          const dx=b.x-g.x,dy=b.y-g.y;
+          if(Math.sqrt(dx*dx+dy*dy)<b.r+g.r){
+            g.hit=true;hits++;}
+        }
+      });
+    });
+  }
+
+  function draw(){
+    ctx.clearRect(0,0,600,400);
+    // background
+    ctx.fillStyle='#0e3a2a';ctx.fillRect(0,0,600,400);
+    // gifts
+    gifts.forEach(g=>{
+      ctx.beginPath();
+      ctx.arc(g.x,g.y,g.r,0,Math.PI*2);
+      ctx.fillStyle=g.hit?'#ffd166':'#e63946';
+      ctx.fill();
+      ctx.closePath();
+    });
+    // balls
+    ctx.fillStyle='#fff';
+    balls.forEach(b=>{ctx.beginPath();ctx.arc(b.x,b.y,b.r,0,Math.PI*2);ctx.fill();});
+    // hud text
+    ctx.fillStyle='#fff';ctx.font='16px sans-serif';
+    ctx.fillText('Schüsse: '+shots+'/10',10,20);
+    ctx.fillText('Treffer: '+hits,10,40);
+  }
+
+  function loop(){
+    update();draw();
+    if(!finished && shots>=10){
+      finished=true;
+      if(hits>=7){
+        messageEl.innerHTML='<b>Geschafft!</b><br>'+secret;
+      } else {
+        messageEl.innerHTML='Nicht geschafft. Treffer: '+hits+'/10. Lade neu und versuch es nochmal!';
+      }
+    }
+    requestAnimationFrame(loop);
+  }
+  loop();
+
+  // Auto-load from URL param
+  (function autoLoad(){
+    const params=new URLSearchParams(location.search);
+    const d=params.get('d');
+    if(d){input.value=d;loadFromString(d);}else{resetGame();}
+  })();
+})();
+</script>
+</body>
+</html>
