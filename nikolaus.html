@@ -21,7 +21,7 @@
 <div class="hud">
   <h1>🎅 Nikolaus Schneeball-Schlacht 🎄</h1>
   <p>Wirf 10 Schneebälle und triff mindestens 7 Geschenke, um die Koordinaten zu erhalten!</p>
-  <canvas id="game" width="600" height="400"></canvas>
+  <canvas id="game" width="400" height="400"></canvas>
   <div id="message">Noch keine Nachricht geladen.</div>
   <div id="controls">
     <input id="inputD" placeholder="Base64-String oder URL mit ?d=..." />
@@ -66,7 +66,7 @@
   function resetGame(){
     balls=[];gifts=[];shots=0;hits=0;finished=false;
     for(let i=0;i<8;i++){
-      gifts.push({x:Math.random()*550+25,y:Math.random()*300+40,r:20,hit:false});
+      gifts.push({x:Math.random()*300+40,y:Math.random()*300+40,r:20,hit:false});
     }
     draw();
   }
@@ -97,9 +97,9 @@
   }
 
   function draw(){
-    ctx.clearRect(0,0,600,400);
+    ctx.clearRect(0,0,400,400);
     // background
-    ctx.fillStyle='#0e3a2a';ctx.fillRect(0,0,600,400);
+    ctx.fillStyle='#0e3a2a';ctx.fillRect(0,0,400,400);
     // gifts
     gifts.forEach(g=>{
       ctx.beginPath();
