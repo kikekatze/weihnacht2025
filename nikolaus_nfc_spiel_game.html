@@ -1,0 +1,167 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Nikolaus-NFC-Spiel</title>
+<style>
+  :root{font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,"Helvetica Neue",Arial;}
+  body{margin:0;background:linear-gradient(#08212a,#022b1f);color:#fff;display:flex;align-items:center;justify-content:center;min-height:100vh}
+  .card{width:940px;max-width:95%;background:rgba(255,255,255,0.04);padding:20px;border-radius:12px;box-shadow:0 8px 30px rgba(0,0,0,0.6)}
+  h1{margin:0 0 8px;font-size:28px}
+  p{margin:6px 0 14px;line-height:1.45}
+  .row{display:flex;gap:12px;flex-wrap:wrap}
+  .gift{width:160px;height:160px;background:#e63946;border-radius:10px;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:22px;cursor:pointer;position:relative}
+  .gift.locked{filter:brightness(.85)}
+  .gift .ribbon{position:absolute;top:8px;left:8px;font-size:12px;opacity:.9}
+  .msg{background:rgba(0,0,0,0.35);padding:12px;border-radius:8px;min-height:80px}
+  .controls{display:flex;gap:8px;margin-top:12px}
+  input[type=text]{flex:1;padding:8px;border-radius:8px;border:0;background:rgba(255,255,255,0.06);color:#fff}
+  button{padding:8px 12px;border-radius:8px;border:0;background:#ffd166;color:#000;font-weight:700;cursor:pointer}
+  .small{font-size:13px;color:#cfe8df}
+  footer{margin-top:12px;font-size:13px;color:#bfe7d6}
+</style>
+</head>
+<body>
+<div class="card">
+  <h1>Der Nikolaus-NFC-Spielplatz</h1>
+  <p>Scannt den NFC‑Chip oder folgt dem Link. Das Spiel enthält eine verschlüsselte Nachricht (Base64). Öffnet sie — löst das kleine Spiel und bekommt die Koordinaten als Belohnung.</p>
+
+  <div class="row">
+    <div style="flex:1;min-width:320px">
+      <div class="msg" id="message">Warte auf Eingabe oder öffne den Link mit Parameter <code>?d=</code></div>
+
+      <div class="controls">
+        <input id="inputD" placeholder="Füge hier den Base64-String ein (oder ganze URL)" />
+        <button id="loadBtn">Laden</button>
+      </div>
+
+      <div style="margin-top:10px" class="small">
+        Tipp: Nutze einen NFC‑Writer (z. B. <em>NFC Tools</em>) um die URL <code>https://yourhost/game.html?d=BASE64</code> auf den Chip zu schreiben. iPhones &amp; Android öffnen die URL beim Antippen.
+      </div>
+    </div>
+
+    <div style="width:380px;min-width:260px">
+      <div class="row" style="margin-bottom:10px">
+        <div class="gift locked" data-index="0">🎁<div class="ribbon">1</div></div>
+        <div class="gift locked" data-index="1">🎁<div class="ribbon">2</div></div>
+        <div class="gift locked" data-index="2">🎁<div class="ribbon">3</div></div>
+      </div>
+      <div class="small">Klick die Geschenke in der richtigen Reihenfolge, um Buchstaben aufzudecken. Sobald alle enthüllt sind, erhältst du die Nachricht.</div>
+    </div>
+  </div>
+
+  <footer>Wenn ihr Hilfe braucht: gebt unten den entschlüsselten Text direkt ein oder erhaltet einen Hinweis nach zwei Fehlversuchen.</footer>
+</div>
+
+<script>
+(function(){
+  // Utility: Base64 decode that tolerates URL/URI variants
+  function b64DecodeUnicode(str) {
+    try {
+      // Allow full URL and ?d=... if user pasted a URL
+      if (str.indexOf('?')>-1) {
+        var u = new URL(str, location.href);
+        str = u.searchParams.get('d') || str;
+      }
+      // Replace URL-safe characters
+      str = str.replace(/-/g, '+').replace(/_/g, '/');
+      // pad
+      while (str.length % 4) str += '=';
+      return decodeURIComponent(Array.prototype.map.call(atob(str), function(c) {
+        return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+      }).join(''));
+    } catch(e){
+      return null;
+    }
+  }
+
+  const gifts = Array.from(document.querySelectorAll('.gift'));
+  const messageEl = document.getElementById('message');
+  const input = document.getElementById('inputD');
+  const loadBtn = document.getElementById('loadBtn');
+
+  let secret = ''; // full decoded message
+  let revealed = [];
+  let attempts = 0;
+  let solutionOrder = [2,0,1]; // fun order to click gifts
+
+  function resetGifts(){
+    revealed = [false,false,false];
+    gifts.forEach(g=>g.classList.add('locked'));
+  }
+
+  function showMessage(text){
+    messageEl.innerHTML = text.replace(/\n/g,'<br>');
+  }
+
+  function loadFromString(s){
+    const decoded = b64DecodeUnicode(s);
+    if(!decoded){ showMessage('<b>Fehler:</b> Ungültiger Base64-String.'); return; }
+    secret = decoded.trim();
+    showMessage('Base64 erfolgreich geladen. Klick die Geschenke in der richtigen Reihenfolge, um Teile der Nachricht freizuschalten.');
+    resetGifts();
+  }
+
+  loadBtn.addEventListener('click', ()=>{
+    loadFromString(input.value.trim());
+  });
+
+  gifts.forEach((g, i)=>{
+    g.addEventListener('click', ()=>{
+      attempts++;
+      // Check if click is in expected next position
+      const expected = solutionOrder[revealed.filter(Boolean).length];
+      if (i === expected){
+        revealed[i]=true; g.classList.remove('locked');
+        // show a slice of message
+        const slice = getSliceForIndex(i);
+        showMessage('Teil freigeschaltet: <b>'+slice+'</b>\n\nNoch '+(3 - revealed.filter(Boolean).length)+' Teile zu öffnen.');
+        if (revealed.every(Boolean)) finishUnlock();
+      } else {
+        if (attempts >= 2) {
+          showMessage('Falsche Reihenfolge. Kleiner Hinweis: Die richtige Reihenfolge ist die Nummer der Rentiere im Gedicht (zähle nach).');
+        } else {
+          showMessage('Falsche Reihenfolge. Versuche es noch einmal.');
+        }
+      }
+    });
+  });
+
+  function getSliceForIndex(i){
+    // split the secret into 3 roughly equal parts
+    const len = secret.length;
+    const part = Math.ceil(len/3);
+    return secret.substr(i*part, part);
+  }
+
+  function finishUnlock(){
+    showMessage('<b>Alles geöffnet!</b>\nDie volle Nachricht:\n\n'+secret+'\n\nSchreibt die Koordinaten ab oder tippt auf "Kopieren".');
+    // add copy button
+    if(!document.getElementById('copyBtn')){
+      const btn = document.createElement('button');
+      btn.id='copyBtn';
+      btn.textContent='Kopieren';
+      btn.style.marginLeft='8px';
+      btn.addEventListener('click', ()=>{
+        navigator.clipboard.writeText(secret).then(()=>{ alert('Nachricht kopiert!'); });
+      });
+      document.querySelector('.controls').appendChild(btn);
+    }
+  }
+
+  // Auto-load from URL param ?d=
+  (function autoLoad(){
+    const params = new URLSearchParams(location.search);
+    const d = params.get('d');
+    if (d){ input.value = d; loadFromString(d); }
+  })();
+
+  // For testing/demo provide an example encoded payload if user wants
+  // Example payload: "N 50° 57.01, E 006° 57.84" -> base64
+  window.exampleBase64 = btoa(unescape(encodeURIComponent('N 50° 57.01, E 006° 57.84')));
+
+})();
+</script>
+</body>
+</html>
