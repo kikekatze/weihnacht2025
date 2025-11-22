@@ -105,11 +105,12 @@
         if (hits >= 3) {
           document.getElementById("message").innerText =
             "🎉 Du hast den Nikolaus getroffen!\nHier ist deine geheime Botschaft:\n\n" + secret;
+          hits = 0;
         } else {
           document.getElementById("message").innerText = "Treffer! (" + hits + "/3)";
         }
       } else {
-        document.getElementById("message").innerText = "Daneben! Versuchs nochmal.";
+        document.getElementById("message").innerText = "Daneben! Versuchs nochmal.\nKlick auf den Nikolaus";
       }
     }
 
